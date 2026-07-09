@@ -63,9 +63,10 @@ export function ProfilePage() {
         ) : (
           <div className="space-y-3">
             {quizzes.map((quiz) => (
-              <div
+              <Link
                 key={quiz.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-100 bg-white p-4 shadow-sm"
+                to={`/quiz/${quiz.id}`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-100 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow-md"
               >
                 <div>
                   <p className="font-medium text-brand-900">{quiz.title}</p>
@@ -74,7 +75,7 @@ export function ProfilePage() {
                   </p>
                   <p className="mt-1 text-sm text-gray-600">{quiz.storyPreview}</p>
                 </div>
-                <div className="text-right">
+                <div className="flex items-center gap-2 text-right">
                   <span
                     className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${
                       quiz.score !== null
@@ -84,8 +85,9 @@ export function ProfilePage() {
                   >
                     {quiz.score !== null ? `${quiz.score}/${quiz.totalQuestions}` : 'Not taken'}
                   </span>
+                  <span className="text-brand-500">→</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

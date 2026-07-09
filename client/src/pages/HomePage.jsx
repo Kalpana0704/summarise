@@ -100,6 +100,15 @@ export function HomePage() {
 
       {quiz && (
         <section className="mt-10 space-y-8">
+          <div className="flex justify-end">
+            <Link
+              to={`/quiz/${quiz.id}`}
+              className="text-sm font-medium text-brand-500 hover:underline"
+            >
+              Open saved quiz page →
+            </Link>
+          </div>
+
           <div className="rounded-2xl border border-brand-100 bg-white p-6 shadow-lg">
             <h2 className="mb-3 text-2xl font-bold text-brand-700">Story Summary</h2>
             <p className="whitespace-pre-wrap leading-relaxed text-gray-700">{quiz.summary}</p>
