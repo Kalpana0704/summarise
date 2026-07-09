@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All reads/writes go through Express API with Firebase Admin SDK.
+    // Client direct access is denied for security.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
