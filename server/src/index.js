@@ -13,8 +13,17 @@ app.use(helmet());
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow any localhost port in development (Vite may use 5173, 5174, etc.)
-      if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      // Local dev (any Vite port)
+      if (/^http:\/\/localhost:\d+$/.test(origin)) {
+        callback(null, true);
+        return;
+      }
+      // Vercel production + preview deployments (e.g. summarise-delta.vercel.app)
+      if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) {
         callback(null, true);
         return;
       }

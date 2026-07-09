@@ -18,7 +18,7 @@ function getFirebaseConfig() {
   if (missing.length > 0) {
     throw new Error(
       `Missing Firebase config (${missing.join(', ')}). ` +
-        'Fill in client/.env and restart the client with npm run dev.',
+        'Set VITE_FIREBASE_* variables in Vercel/hosting env and redeploy.',
     );
   }
 

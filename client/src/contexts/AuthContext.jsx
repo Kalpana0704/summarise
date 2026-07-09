@@ -13,6 +13,7 @@ import {
   signOut,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { getAuthErrorMessage } from '../lib/authErrors';
 
 const AuthContext = createContext(null);
 
@@ -32,13 +33,25 @@ export function AuthProvider({ children }) {
       user,
       loading,
       login: async (email, password) => {
-        await signInWithEmailAndPassword(auth, email, password);
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (err) {
+          throw new Error(getAuthErrorMessage(err));
+        }
       },
       register: async (email, password) => {
-        await createUserWithEmailAndPassword(auth, email, password);
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch (err) {
+          throw new Error(getAuthErrorMessage(err));
+        }
       },
       loginWithGoogle: async () => {
-        await signInWithPopup(auth, googleProvider);
+        try {
+          await signInWithPopup(auth, googleProvider);
+        } catch (err) {
+          throw new Error(getAuthErrorMessage(err));
+        }
       },
       logout: async () => {
         await signOut(auth);

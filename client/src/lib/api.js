@@ -2,19 +2,40 @@ import { auth } from './firebase';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
+function apiUrl(path) {
+  if (!API_BASE) {
+    throw new Error(
+      'API URL is not configured. Set VITE_API_URL=https://story-quiz-api.onrender.com in Vercel env vars and redeploy.',
+    );
+  }
+  return `${API_BASE.replace(/\/$/, '')}${path}`;
+}
+
 async function authFetch(path, options = {}) {
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
 
   const token = await user.getIdToken();
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
+
+  let response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    if (message === 'Failed to fetch' || err instanceof TypeError) {
+      throw new Error(
+        'Cannot reach the API server. Check VITE_API_URL on Vercel, add your domain in Render CLIENT_URL, and wait ~30s for Render free tier to wake up.',
+      );
+    }
+    throw err;
+  }
 
   const data = await response.json().catch(() => ({}));
 
