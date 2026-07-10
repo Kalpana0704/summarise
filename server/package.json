@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=.env --watch src/index.js",
+    "dev": "node --env-file=.env src/index.js",
+    "dev:watch": "node --env-file=.env --watch src/index.js",
     "start": "node src/index.js",
-    "build": "npm install"
+    "build": "npm install",
+    "smoke": "node --env-file=.env scripts/smoke-api.mjs"
   },
   "engines": {
     "node": ">=18"

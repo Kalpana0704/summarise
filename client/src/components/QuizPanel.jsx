@@ -2,7 +2,7 @@ import confetti from 'canvas-confetti';
 import { useState } from 'react';
 import { saveQuizScore } from '../lib/api';
 
-export function QuizPanel({ quiz, onScoreSaved }) {
+export function QuizPanel({ quiz, onScoreSaved, saveScore = true }) {
   const [answers, setAnswers] = useState(Array(quiz.questions.length).fill(null));
   const [revealed, setRevealed] = useState(Array(quiz.questions.length).fill(false));
   const [completed, setCompleted] = useState(false);
@@ -37,12 +37,16 @@ export function QuizPanel({ quiz, onScoreSaved }) {
       confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
     }
 
-    try {
-      await saveQuizScore(quiz.id, finalScore);
-      onScoreSaved?.(finalScore);
-    } catch {
-      // Score display still works locally
-    } finally {
+    if (saveScore && quiz.id) {
+      try {
+        await saveQuizScore(quiz.id, finalScore);
+        onScoreSaved?.(finalScore);
+      } catch {
+        // Score display still works locally
+      } finally {
+        setSaving(false);
+      }
+    } else {
       setSaving(false);
     }
   };
@@ -124,7 +128,10 @@ export function QuizPanel({ quiz, onScoreSaved }) {
                   ? 'Good job — keep reading!'
                   : 'Review the summary and try again.'}
           </p>
-          {saving && <p className="mt-2 text-xs opacity-75">Saving score…</p>}
+          {saving && saveScore && <p className="mt-2 text-xs opacity-75">Saving score…</p>}
+          {completed && !saveScore && (
+            <p className="mt-2 text-xs opacity-75">Scores are not saved on shared quizzes.</p>
+          )}
         </div>
       )}
     </div>

@@ -1,16 +1,38 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { QuizPanel } from '../components/QuizPanel';
+import { ShareQuizButton } from '../components/ShareQuizButton';
 import { useAuth } from '../contexts/AuthContext';
 import { generateQuiz } from '../lib/api';
 
 export function HomePage() {
   const { user } = useAuth();
+  const fileInputRef = useRef(null);
   const [story, setStory] = useState('');
   const [difficulty, setDifficulty] = useState('medium');
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError] = useState('');
   const [quiz, setQuiz] = useState(null);
+  const [shareState, setShareState] = useState({ shareId: null, isShared: false });
+
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setError('');
+    setPdfLoading(true);
+    try {
+      const { extractTextFromPdf } = await import('../lib/pdf');
+      const text = await extractTextFromPdf(file);
+      setStory(text);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to read PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const handleGenerate = async () => {
     if (story.trim().length < 50) {
@@ -25,6 +47,7 @@ export function HomePage() {
     try {
       const result = await generateQuiz(story.trim(), difficulty);
       setQuiz(result);
+      setShareState({ shareId: result.shareId ?? null, isShared: result.isShared ?? false });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate quiz');
     } finally {
@@ -39,8 +62,8 @@ export function HomePage() {
           Turn Stories Into Smart Quizzes
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
-          Paste any story and our AI will summarize it and generate an interactive multiple-choice
-          quiz. Perfect for students, readers, and educators.
+          Paste a story or upload a PDF — our AI will summarize it and generate an interactive
+          multiple-choice quiz. Perfect for students, readers, and educators.
         </p>
       </section>
 
@@ -54,11 +77,31 @@ export function HomePage() {
       )}
 
       <section className="mt-10 rounded-2xl border border-brand-100 bg-white p-6 shadow-lg">
-        <label className="mb-2 block text-sm font-medium text-gray-700">Your story</label>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <label className="text-sm font-medium text-gray-700">Your story</label>
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={handlePdfUpload}
+              disabled={!user || loading || pdfLoading}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!user || loading || pdfLoading}
+              className="rounded-lg border border-brand-500 px-3 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {pdfLoading ? 'Reading PDF…' : 'Upload PDF'}
+            </button>
+          </div>
+        </div>
         <textarea
           value={story}
           onChange={(e) => setStory(e.target.value)}
-          placeholder="Paste your story here (minimum 50 characters)…"
+          placeholder="Paste your story here or upload a PDF (minimum 50 characters)…"
           rows={8}
           disabled={!user || loading}
           className="w-full resize-y rounded-xl border border-gray-300 px-4 py-3 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-gray-50"
@@ -93,14 +136,20 @@ export function HomePage() {
         {loading && (
           <div className="mt-8 flex flex-col items-center gap-3 py-8">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-            <p className="text-gray-600">AI is reading your story…</p>
+            <p className="text-gray-600">AI is reading your story… (this may take up to a minute)</p>
           </div>
         )}
       </section>
 
       {quiz && (
         <section className="mt-10 space-y-8">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <ShareQuizButton
+              quizId={quiz.id}
+              shareId={shareState.shareId ?? quiz.shareId}
+              isShared={shareState.isShared ?? quiz.isShared}
+              onShareChange={setShareState}
+            />
             <Link
               to={`/quiz/${quiz.id}`}
               className="text-sm font-medium text-brand-500 hover:underline"

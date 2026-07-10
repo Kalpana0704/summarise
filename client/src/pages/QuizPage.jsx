@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { QuizPanel } from '../components/QuizPanel';
+import { ShareQuizButton } from '../components/ShareQuizButton';
 import { fetchQuiz } from '../lib/api';
 
 export function QuizPage() {
@@ -74,6 +75,14 @@ export function QuizPage() {
         {quiz.storyPreview && (
           <p className="mt-3 text-sm italic text-gray-600">"{quiz.storyPreview}"</p>
         )}
+        <div className="mt-4">
+          <ShareQuizButton
+            quizId={quiz.id}
+            shareId={quiz.shareId}
+            isShared={quiz.isShared}
+            onShareChange={(update) => setQuiz((prev) => (prev ? { ...prev, ...update } : prev))}
+          />
+        </div>
         {displayScore !== null && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700">

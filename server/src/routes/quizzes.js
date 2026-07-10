@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { getFirestore } from '../config/firebase.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -36,10 +37,51 @@ function toQuizDoc(id, data) {
     questions: data.questions,
     score: data.score ?? null,
     totalQuestions: data.totalQuestions ?? data.questions?.length ?? 5,
+    shareId: data.shareId ?? null,
+    isShared: data.isShared ?? false,
     createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? data.createdAt,
     completedAt: data.completedAt?.toDate?.()?.toISOString?.() ?? data.completedAt ?? null,
   };
 }
+
+function toPublicQuizDoc(id, data) {
+  return {
+    id,
+    title: data.title,
+    storyPreview: data.storyPreview,
+    difficulty: data.difficulty,
+    summary: data.summary,
+    questions: data.questions,
+    totalQuestions: data.totalQuestions ?? data.questions?.length ?? 5,
+    createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? data.createdAt,
+  };
+}
+
+router.get('/share/:shareId', async (req, res, next) => {
+  try {
+    const snapshot = await getFirestore()
+      .collection('quizzes')
+      .where('shareId', '==', req.params.shareId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      res.status(404).json({ error: 'Shared quiz not found or sharing is disabled' });
+      return;
+    }
+
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    if (!data.isShared) {
+      res.status(404).json({ error: 'Shared quiz not found or sharing is disabled' });
+      return;
+    }
+
+    res.json({ quiz: toPublicQuizDoc(doc.id, data) });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.post('/generate', generateLimiter, requireAuth, async (req, res, next) => {
   try {
@@ -53,6 +95,7 @@ router.post('/generate', generateLimiter, requireAuth, async (req, res, next) =>
     const generated = await generateQuizFromStory(text, difficulty);
 
     const db = getFirestore();
+    const shareId = randomUUID();
     const docRef = await db.collection('quizzes').add({
       userId: req.user.uid,
       title: title ?? `Quiz – ${new Date().toLocaleDateString()}`,
@@ -62,6 +105,8 @@ router.post('/generate', generateLimiter, requireAuth, async (req, res, next) =>
       questions: generated.questions,
       score: null,
       totalQuestions: generated.questions.length,
+      shareId,
+      isShared: false,
       createdAt: new Date(),
       completedAt: null,
     });
@@ -76,6 +121,8 @@ router.post('/generate', generateLimiter, requireAuth, async (req, res, next) =>
         questions: generated.questions,
         score: null,
         totalQuestions: generated.questions.length,
+        shareId,
+        isShared: false,
         createdAt: new Date(),
         completedAt: null,
       }),
@@ -96,6 +143,54 @@ router.get('/', requireAuth, async (req, res, next) => {
 
     const quizzes = snapshot.docs.map((doc) => toQuizDoc(doc.id, doc.data()));
     res.json({ quizzes });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/share', requireAuth, async (req, res, next) => {
+  try {
+    const ref = getFirestore().collection('quizzes').doc(req.params.id);
+    const doc = await ref.get();
+
+    if (!doc.exists) {
+      res.status(404).json({ error: 'Quiz not found' });
+      return;
+    }
+
+    const data = doc.data();
+    if (data.userId !== req.user.uid) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    const shareId = data.shareId ?? randomUUID();
+    await ref.update({ shareId, isShared: true });
+
+    res.json({ shareId, isShared: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id/share', requireAuth, async (req, res, next) => {
+  try {
+    const ref = getFirestore().collection('quizzes').doc(req.params.id);
+    const doc = await ref.get();
+
+    if (!doc.exists) {
+      res.status(404).json({ error: 'Quiz not found' });
+      return;
+    }
+
+    const data = doc.data();
+    if (data.userId !== req.user.uid) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    await ref.update({ isShared: false });
+    res.json({ isShared: false });
   } catch (err) {
     next(err);
   }
